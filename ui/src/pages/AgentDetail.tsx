@@ -895,7 +895,7 @@ export function AgentDetail() {
               value={agent.title ?? ""}
               fitContent
               nullable
-              placeholder={roleLabels[agent.role] ?? agent.role}
+              placeholder={`${roleLabels[agent.role] ?? agent.role} (click to set role)`}
               className="min-w-0 truncate text-2xl font-semibold leading-8 text-foreground"
               onSave={(title) => saveHeaderField({ title: title || null })}
             />
