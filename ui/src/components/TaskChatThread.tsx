@@ -44,7 +44,7 @@ import {
 } from "@/components/transcript/useLiveRunTranscripts";
 import { useNativeRunTranscripts } from "@/components/transcript/useNativeRunTranscripts";
 import { TaskChatLiveTail } from "@/components/task-chat/TaskChatLiveTail";
-import { TaskChatRunnerHeader, TaskChatRunnerTurn } from "@/components/task-chat/TaskChatRunnerTurn";
+import { TaskChatRunnerHeader, TaskChatRunnerTurn, terminalStatusFailed } from "@/components/task-chat/TaskChatRunnerTurn";
 import { partitionRunHealthItems } from "@/components/task-chat/TaskChatRunHealthBanner";
 import {
   TaskChatTurnStatusIsland,
@@ -2471,7 +2471,34 @@ export function TaskChatThread(props: TaskChatThreadProps) {
     settlingRun != null &&
     !settledRunRendered &&
     (transcriptByRun.get(settlingRun.id)?.length ?? 0) > 0;
-  const tailRunId = liveRun
+  // Run and comment updates can arrive in either order. Once this run's saved
+  // reply matches the last thing it said, the bubble owns it; drawing the live
+  // turn as well would show the reply twice.
+  const liveReplySaved = useMemo(() => {
+    const runId = liveRun?.id ?? settlingRun?.id;
+    if (!runId || isNativePaperclipRunnerRun(runs.find((run) => run.id === runId))) return false;
+    const entries = transcriptByRun.get(runId) ?? [];
+    let said = "";
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const entry = entries[index];
+      if (entry.kind === "assistant") said = entry.text + said;
+      else if (entry.kind === "tool_call" || entry.kind === "thinking") break;
+    }
+    const text = normalizedMessageText(said);
+    const startedAtMs = liveRun
+      ? toMs(liveRun.startedAt ?? liveRun.createdAt)
+      : (settlingRun?.startedAtMs ?? Number.POSITIVE_INFINITY);
+    return text !== "" && comments.some((comment) => {
+      if (comment.deletedAt || comment.authorType !== "agent" || normalizedMessageText(comment.body) !== text) return false;
+      const authoredRunId = comment.runId ?? comment.createdByRunId ?? comment.derivedCreatedByRunId;
+      // The run link can arrive after the reply itself.
+      return authoredRunId ? authoredRunId === runId
+        : toMs(comment.createdAt) >= startedAtMs && (!liveRun || comment.authorAgentId === liveRun.agentId);
+    });
+  }, [liveRun, settlingRun, runs, transcriptByRun, comments]);
+  const tailRunId = liveReplySaved
+    ? null
+    : liveRun
     ? liveRun.id
     : showSettlingTail
       ? settlingRun!.id
@@ -2907,11 +2934,18 @@ export function TaskChatThread(props: TaskChatThreadProps) {
     },
     [beginSubmission, rejectSubmission, onAdd, pendingComposerInputs, selectedPendingInput, dismissInput, agentMap, takeoverMode],
   );
+  // The server's "working" note can outlive the run by one refresh. Its saved
+  // reply ends it; a failed run keeps it because a retry may be starting.
+  const workingRunId = props.interruption?.state === "working" ? props.interruption.observedRunId : null;
+  const workingRunAnswered = Boolean(workingRunId) &&
+    !terminalStatusFailed(linkedRunMetaById.get(workingRunId ?? "")?.status ?? "") &&
+    comments.some((comment) => !comment.deletedAt && comment.authorType === "agent" &&
+      (comment.runId ?? comment.createdByRunId ?? comment.derivedCreatedByRunId) === workingRunId);
   const optimisticRunnerStartup =
     hasAgentAssignee &&
     !startupBlocked &&
     !tailRunId &&
-    (props.retryPreparing || props.interruption?.state === "working" || runnerSubmissionPending ||
+    (props.retryPreparing || (props.interruption?.state === "working" && !workingRunAnswered) || runnerSubmissionPending ||
       commentItems.some(
         (item) =>
           item.kind === "message" &&
@@ -3475,7 +3509,7 @@ export function TaskChatThread(props: TaskChatThreadProps) {
                                         items={tailItems}
                                         emptyMessage={
                                           tailStatus === "queued"
-                                            ? "Waiting to start..."
+                                            ? "Thinking"
                                             : (liveRun && liveRun.id === tailRunId
                                                 ? liveRun.currentStatusMessage
                                                 : null) ||

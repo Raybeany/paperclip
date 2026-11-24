@@ -57,7 +57,7 @@ function formatCompactDuration(ms: number | null): string | null {
   return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
-function terminalStatusFailed(status: string): boolean {
+export function terminalStatusFailed(status: string): boolean {
   return (
     status === "failed" ||
     status === "cancelled" ||
@@ -135,7 +135,9 @@ function runnerWaitingLabel({ runId, status, execution, preparationLabel }: Runn
   if (isTerminalRunStatus(status)) return null;
   if (execution?.phase === "waiting_for_provider") return execution.label;
   if (!runId && preparationLabel) return preparationLabel;
-  return status === "queued" ? execution?.label ?? "Queued" : null;
+  // A plain queued run starts within moments, so it reads as thinking. A run that
+  // really waits for something (an answer, access, another task) says what.
+  return status === "queued" && execution && execution.label !== "Queued" ? execution.label : null;
 }
 
 /** One identity stays mounted while admission discovers the run's renderer. */

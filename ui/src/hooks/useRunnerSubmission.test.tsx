@@ -39,3 +39,29 @@ it("settles a newer saved message while the same Retry explanation remains visib
     await act(async () => root.unmount()); container.remove(); vi.useRealTimers();
   }
 });
+
+it("stops waiting once the agent has replied, even if the run update is late", async () => {
+  const container = document.createElement("div"); document.body.append(container);
+  const root = createRoot(container);
+  const at = Date.now();
+  const message = (id: string, agent: string | null, offset: number, clientRequestId?: string): IssueChatComment => ({ id, clientRequestId,
+    companyId: "company", issueId: "task", authorType: agent ? "agent" : "user", authorAgentId: agent, authorUserId: agent ? null : "board",
+    body: id, presentation: null, metadata: null, createdAt: new Date(at + offset), updatedAt: new Date(at + offset) });
+  function View({ comments }: { comments: IssueChatComment[] }) {
+    const submission = useRunnerSubmission({ issueId: "task", agentId: "agent", agent: { status: "idle" },
+      issueStatus: "in_review", runId: null, comments });
+    return <><button onClick={() => submission.begin("message")}>Send</button>{submission.pending && <span>Thinking</span>}</>;
+  }
+  try {
+    const earlier = message("earlier reply", "agent", -60_000);
+    await act(async () => root.render(<View comments={[earlier]} />));
+    await act(async () => container.querySelector("button")!.click());
+    const sent = message("question", null, 0, "message");
+    await act(async () => root.render(<View comments={[earlier, sent]} />));
+    expect(container.textContent).toContain("Thinking");
+    await act(async () => root.render(<View comments={[earlier, sent, message("someone else", "other-agent", 1_000)]} />));
+    expect(container.textContent).toContain("Thinking");
+    await act(async () => root.render(<View comments={[earlier, sent, message("answer", "agent", 2_000)]} />));
+    expect(container.textContent).not.toContain("Thinking");
+  } finally { await act(async () => root.unmount()); container.remove(); }
+});

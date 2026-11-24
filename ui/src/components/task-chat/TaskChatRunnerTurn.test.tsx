@@ -68,19 +68,11 @@ describe("TaskChatRunnerTurn", () => {
       ),
     );
 
-  it("shows admission waiting instead of Thinking for a queued turn", () => {
-    render([], "queued");
-    expect(container.querySelector('[data-testid="task-chat-turn-status-header"]')?.textContent).toContain("Queued");
-    expect(container.querySelector('[data-testid="task-chat-current-activity-label"]')?.textContent).toBe("Queued");
-    expect(container.textContent).not.toContain("Working");
-    expect(container.textContent).not.toContain("Thinking");
-  });
-
-  it("shows queued startup before a run ID or preparation label exists", () => {
-    render([], "queued", null);
-    expect(container.querySelector('[data-testid="task-chat-turn-status-header"]')?.textContent).toContain("Queued");
-    expect(container.querySelector('[data-testid="task-chat-current-activity-label"]')?.textContent).toBe("Queued");
-    expect(container.textContent).not.toContain("Thinking");
+  it.each(["run-1", null])("reads as working and thinking from the first moment (run id: %s)", (runId) => {
+    render([], "queued", runId);
+    expect(container.querySelector('[data-testid="task-chat-turn-status-header"]')?.textContent).toContain("Working");
+    expect(container.querySelector('[data-testid="task-chat-current-activity-label"]')?.textContent).toBe("Thinking");
+    expect(container.textContent).not.toContain("Queued");
   });
 
   it("preserves a specific preparation label before a run ID exists", () => {

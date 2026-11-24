@@ -65,7 +65,12 @@ export function useRunnerSubmission({
       (!submission.runIds.has(run.runId) && acknowledgedAt !== null &&
         new Date(run.createdAt).getTime() >= acknowledgedAt)
     )) : [];
+  // The reply itself ends the wait, whichever of the two updates arrives first.
+  const answered = submission !== null && acknowledgedAt !== null && comments.some(comment =>
+    comment.authorAgentId === submission.agentId && !comment.deletedAt &&
+    new Date(comment.createdAt).getTime() > acknowledgedAt);
   const settled = Boolean(submission && (
+    answered ||
     runId || startupBlocked || isTerminalIssueStatus(issueStatus) ||
     (submission.agentId !== agentId && submission.previousAgentId !== agentId) ||
     (submission.issueId && submission.issueId !== issueId) ||

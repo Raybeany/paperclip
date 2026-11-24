@@ -573,7 +573,7 @@ it.each([true, false])("keeps an upload attached when a conversation draft becom
   expect(onAdd.mock.calls[0]?.[3]).toEqual([id]);
 });
 
-it("shows Queued during admission and clears it when the saved follow-up enters backoff", async () => {
+it("shows Thinking during admission and clears it when the saved follow-up enters backoff", async () => {
   const pending = { id: "optimistic-recovery", companyId: "company", issueId: "issue", authorType: "user" as const,
     authorAgentId: null, authorUserId: "board", body: "Confirm the existing result.", presentation: null, metadata: null,
     createdAt: new Date(), updatedAt: new Date(), clientStatus: "pending" as const };
@@ -586,7 +586,8 @@ it("shows Queued during admission and clears it when the saved follow-up enters 
     agentMap={new Map([["agent", { id: "agent", name: "Worker", adapterType: "paperclip_runner" } as Agent]])} />);
   show(false);
   expect(container.textContent).toContain("Confirm the existing result.");
-  expect(container.textContent).toContain("Queued");
+  expect(container.textContent).toContain("Thinking");
+  expect(container.textContent).not.toContain("Queued");
   show(true);
   expect(container.textContent).not.toContain("Thinking");
   expect(container.textContent).not.toContain("Working");
@@ -616,7 +617,8 @@ it.each((["task", "legacy"] as const).flatMap(surface =>
   try {
     await act(async () => { send!.click(); });
     expect(onAdd).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("Queued");
+    expect(container.textContent).toContain("Thinking");
+    expect(container.textContent).not.toContain("Queued");
     const identity = container.querySelector('[data-testid="task-chat-agent-identity"]');
     render(<Component {...props} composerDisabledReason="Could not load task pause state." />);
     expect(container.querySelector('[data-testid="task-chat-agent-identity"]')).toBe(identity);
@@ -723,7 +725,8 @@ it.each([null, "previous-agent"].flatMap(previousAgentId => ["paperclip_runner",
   render(<TaskChatThread {...props} comments={[saved]} issueAssigneeAgentId="next-agent" currentAssigneeValue="agent:next-agent" />);
   await act(async () => acknowledge());
   expect(container.querySelector('[data-testid="task-chat-agent-identity"]')).toBe(identity);
-  expect(container.textContent).toContain("Queued");
+  expect(container.textContent).toContain("Thinking");
+  expect(container.textContent).not.toContain("Queued");
   // Choosing a recipient for the next draft does not change the sent request.
   await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="task-chat-composer-assignee"]')!.click());
   await act(async () => document.querySelector('[data-assignee-identity="agent:previous-agent"]')!.closest("button")!.click());
@@ -1491,7 +1494,7 @@ describe("TaskChatThread runtime transcript selection", () => {
     const activity = container.querySelector('[data-testid="task-chat-current-activity-label"]');
     expect(identity?.textContent).toBe("Runner");
     expect(identity?.querySelector("svg, img")).not.toBeNull();
-    expect(activity?.textContent).toBe("Queued");
+    expect(activity?.textContent).toBe("Thinking");
 
     renderThread(props);
     expect(container.querySelector('[data-testid="task-chat-agent-identity"]')).toBe(identity);
@@ -1507,7 +1510,7 @@ describe("TaskChatThread runtime transcript selection", () => {
       expect(container.querySelector('[data-testid="task-chat-agent-identity"]')).toBe(identity);
       expect(container.querySelector('[data-testid="task-chat-runner-identity-row"]')).toBe(header);
       expect(container.querySelector('[data-testid="task-chat-current-activity-label"]')).toBe(activity);
-      expect(activity?.textContent).toBe(startup.status === "queued" ? "Queued" : "Thinking");
+      expect(activity?.textContent).toBe("Thinking");
       expect(container.querySelector('[data-testid="task-chat-live-run-pill"]')).toBeNull();
       expect(container.textContent).not.toContain("run started");
     }
@@ -5404,6 +5407,58 @@ describe("TaskChatThread live transcript", () => {
     );
     expect(tail2!.textContent).toContain("Working");
     expect(tail2!.textContent).not.toContain("Waiting for transcript...");
+  });
+
+  describe("a reply saved while its run still looks live", () => {
+    const run = { id: "late-run", status: "running" as const, invocationSource: "issue" as const, triggerDetail: null,
+      startedAt: "2026-08-07T00:00:00.000Z", finishedAt: null, createdAt: "2026-08-07T00:00:00.000Z",
+      agentId: "agent-1", agentName: "Giuseppe", adapterType: "claude_local" };
+    const reply = (body: string, link: object = { runId: run.id }) => ({ id: "saved-reply", body, companyId: "company", issueId: "issue",
+      authorType: "agent" as const, authorAgentId: "agent-1", authorUserId: null, presentation: null, metadata: null,
+      createdAt: new Date("2026-08-07T00:00:05Z"), updatedAt: new Date("2026-08-07T00:00:05Z"), ...link });
+    const copies = (text: string) => container.textContent!.split(text).length - 1;
+    const show = (comments: ReturnType<typeof reply>[]) =>
+      renderThread({ comments, onAdd: async () => {}, issueStatus: "in_progress", activeRun: run, liveRuns: [run] });
+    const stream = (...texts: string[]) => transcriptState.transcriptByRun.set(run.id, texts.map((text, index) => (
+      { kind: "assistant" as const, ts: `2026-08-07T00:00:0${index + 1}.000Z`, text })));
+
+    const links = { runId: { runId: run.id }, createdByRunId: { createdByRunId: run.id }, derived: { derivedCreatedByRunId: run.id }, "no link yet": {} };
+    it.each(Object.keys(links).flatMap(link => ([undefined, "running", "succeeded"] as const)
+      .flatMap(linked => [true, false].map(live => ({ link, linked, live })))))("shows the reply once (reply link: $link, run record: $linked, still live: $live)", ({ link, linked, live }) => {
+      stream("Yes, I understand.");
+      show([]);
+      expect(copies("Yes, I understand.")).toBe(1);
+      renderThread({ comments: [reply("Yes, I understand.", links[link as keyof typeof links])], onAdd: async () => {}, issueStatus: "in_progress",
+        activeRun: live ? run : null, liveRuns: live ? [run] : [],
+        linkedRuns: linked ? [{ ...run, runId: run.id, status: linked, finishedAt: linked === "succeeded" ? "2026-08-07T00:00:04.000Z" : null }] : [] });
+      expect(copies("Yes, I understand.")).toBe(1);
+      expect(container.querySelector('[data-testid="task-chat-live-transcript"]')).toBeNull();
+    });
+
+    it.each([["succeeded", false], ["running", false], ["failed", true]] as const)("treats a late working note as over once that run has answered (run record: %s)", (status, thinking) => {
+      const agentMap = new Map([["agent-1", { id: "agent-1", name: "Giuseppe", adapterType: "claude_local" } as Agent]]);
+      const interruption = { intentId: null, responsibility: "system" as const, state: "working" as const, nextRetryAt: null,
+        canRetry: false, userAction: null, sourceRunIds: [run.id], observedRunId: run.id };
+      const props = { onAdd: async () => {}, issueStatus: "in_review", issueAssigneeAgentId: "agent-1", agentMap, interruption };
+      renderThread({ ...props, comments: [] });
+      expect(container.textContent).toContain("Thinking");
+      renderThread({ ...props, comments: [reply("Yes, I understand.")],
+        linkedRuns: [{ ...run, runId: run.id, status, finishedAt: status === "running" ? null : "2026-08-07T00:00:04.000Z" }] });
+      expect(container.textContent!.includes("Thinking")).toBe(thinking);
+    });
+
+    it("keeps a live turn that is still saying something new", () => {
+      transcriptState.transcriptByRun.set(run.id, [{ kind: "assistant" as const, ts: "2026-08-07T00:00:08.000Z", text: "Still looking into it." }]);
+      show([reply("Here is a first note.")]);
+      expect(container.querySelector('[data-testid="task-chat-live-transcript"]')).not.toBeNull();
+      expect(copies("Still looking into it.")).toBe(1);
+    });
+
+    it("keeps a live turn whose text matches only an earlier run's reply", () => {
+      stream("Done.");
+      show([reply("Done.", { runId: "earlier-run" })]);
+      expect(container.querySelector('[data-testid="task-chat-live-transcript"]')).not.toBeNull();
+    });
   });
 
   it("does not send a workspace bootstrap failure to connection settings", () => {
