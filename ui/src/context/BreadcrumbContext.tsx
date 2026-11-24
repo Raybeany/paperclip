@@ -70,12 +70,15 @@ function breadcrumbsEqual(left: Breadcrumb[], right: Breadcrumb[]) {
   return true;
 }
 
+const APP_NAME = "Raybeanys";
+
 export function buildDocumentTitle(breadcrumbs: Breadcrumb[], companyName?: string | null) {
   const pageParts = breadcrumbs.length === 0
     ? []
     : [...breadcrumbs].reverse().map((breadcrumb) => breadcrumb.label);
-  const companyPart = companyName?.trim() ? [companyName.trim()] : [];
-  const parts = [...pageParts, ...companyPart, "Paperclip"];
+  const company = companyName?.trim();
+  const companyPart = company && company !== APP_NAME ? [company] : [];
+  const parts = [...pageParts, ...companyPart, APP_NAME];
   return parts.join(" • ");
 }
 
