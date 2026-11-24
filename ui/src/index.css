@@ -5488,3 +5488,20 @@ html:has(.design-proposal-theme) .agent-markdown-name-field [data-slot="input"],
   }
 }
 .agent-contact-pin-row[data-has-unread="true"] .agent-pin-text { mask-image: none; }
+
+/* A prompt copied from a code block reads like any other message the person
+   sent: no box inside the bubble, and long lines wrap instead of being cut off. */
+[data-conversation-message="human"] [data-conversation-text="human"] .paperclip-markdown .paperclip-markdown-codeblock pre {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  font-family: var(--font-sans) !important;
+  white-space: pre-wrap !important;
+}
+[data-conversation-message="human"] [data-conversation-text="human"] .paperclip-markdown .paperclip-markdown-codeblock pre code {
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit !important;
+  white-space: inherit !important;
+}
