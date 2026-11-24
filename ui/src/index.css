@@ -4124,6 +4124,25 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   transform: translateX(calc(var(--cell-marquee-overflow) * -1px));
   transition: transform calc(var(--cell-marquee-overflow) * var(--task-row-title-marquee-step-duration)) var(--task-row-title-marquee-ease) var(--task-row-title-marquee-delay);
 }
+/* Phones have no hover to reveal a clipped title, so task titles wrap to two
+   lines with an ellipsis instead of fading out mid-word. */
+@media (max-width: 639px) {
+  .cell-marquee[data-slot="task-row-title"] {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .cell-marquee[data-slot="task-row-title"] > .cell-marquee-viewport,
+  .cell-marquee[data-slot="task-row-title"] .cell-marquee-content {
+    display: inline;
+    white-space: normal;
+    overflow: visible;
+    mask-image: none !important;
+    transform: none !important;
+  }
+}
 .cell-marquee:focus-visible { outline: var(--task-row-focus-width) solid var(--task-row-focus-color); outline-offset: calc(var(--task-row-focus-width) * -1); }
 @media (prefers-reduced-motion: reduce) {
   .cell-marquee[data-revealing="true"] > .cell-marquee-viewport > .cell-marquee-content { transition: none; }
