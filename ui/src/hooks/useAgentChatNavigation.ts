@@ -7,9 +7,10 @@ import { authApi } from "@/api/auth";
 import { useCompany } from "@/context/CompanyContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { queryKeys } from "@/lib/queryKeys";
-import { useNavigate } from "@/lib/router";
+import { useLocation, useNavigate } from "@/lib/router";
 import { agentRouteRef } from "@/lib/utils";
 import { useAgentChatEnabled } from "./useAgentChatEnabled";
+import { useHoldOpenChatUnread } from "./useOpenChatUnread";
 
 export function useAgentChatNavigation() {
   const { selectedCompanyId: companyId } = useCompany();
@@ -20,9 +21,25 @@ export function useAgentChatNavigation() {
     queryKey: queryKeys.agents.list(companyId!), queryFn: () => agentsApi.list(companyId!),
     enabled: enabled && !!companyId,
   });
-  const chats = useQuery({
+  const openAgentRef = useLocation().pathname.split("/chats/")[1]?.split("/")[0];
+  const openAgentId = openAgentRef
+    ? agents.data?.find(agent => agent.id === openAgentRef || encodeURIComponent(agentRouteRef(agent)) === openAgentRef)?.id ?? null
+    : null;
+  const chatList = {
     queryKey: queryKeys.agentChats.list(companyId, userId), queryFn: () => agentChatsApi.list(companyId!),
     enabled: enabled && !!companyId && session.isSuccess,
+  };
+  const openChatUnread = useQuery({
+    ...chatList,
+    select: (list: Issue[]) => list.some(chat => chat.conversationAgentId === openAgentId && !!(chat.isUnreadForMe || chat.unreadMessageCount)),
+  }).data ?? false;
+  const held = useHoldOpenChatUnread(openAgentId, openChatUnread);
+  const chats = useQuery({
+    ...chatList,
+    select: useCallback((list: Issue[]) => held
+      ? list.map(chat => chat.conversationAgentId === openAgentId && (chat.isUnreadForMe || chat.unreadMessageCount)
+        ? { ...chat, isUnreadForMe: false, unreadMessageCount: 0 } : chat)
+      : list, [held, openAgentId]),
   });
   return { companyId, userId, enabled, loaded, agents, chats, session };
 }

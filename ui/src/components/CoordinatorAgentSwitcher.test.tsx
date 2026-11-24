@@ -10,7 +10,7 @@ import { CoordinatorAgentSwitcher } from "./CoordinatorAgentSwitcher";
 const state = vi.hoisted(() => ({ companyId: "company-a", navigate: vi.fn(), listChats: vi.fn(), listAgents: vi.fn() }));
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: state.companyId }) }));
 vi.mock("@/context/SidebarContext", () => ({ useSidebar: () => ({ isMobile: false, setSidebarOpen: vi.fn() }) }));
-vi.mock("@/lib/router", () => ({ useNavigate: () => state.navigate }));
+vi.mock("@/lib/router", () => ({ useNavigate: () => state.navigate, useLocation: () => ({ pathname: "/PAP/chats/mira" }) }));
 vi.mock("@/api/agents", () => ({ agentsApi: { list: state.listAgents } }));
 vi.mock("@/api/agentChats", () => ({ agentChatsApi: { list: state.listChats } }));
 vi.mock("@/api/auth", () => ({ authApi: { getSession: () => ({ user: { id: "user-a" } }) } }));
