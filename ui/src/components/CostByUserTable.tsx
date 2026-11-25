@@ -11,7 +11,7 @@ export function CostByUserTable({ report }: { report: CostByUserReport }) {
         <CardTitle className="text-base">By user</CardTitle>
       </CardHeader>
       <CardContent className="px-5">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" role="region" aria-label="Costs by user, scrollable" tabIndex={0}>
           <table aria-label="Costs by user" className="w-full text-sm">
             <thead className="text-muted-foreground">
               <tr className="border-b border-border">

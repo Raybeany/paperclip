@@ -840,20 +840,10 @@ function SkillCard({
     && !(cardFolder && isBundledFolder(cardFolder));
   return (
     <div
-      onClick={() => onOpen(card)}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onOpen(card);
-        }
-      }}
-      role="button"
-      tabIndex={0}
       className={cn(
         // Quiet interactive-card affordance (DECISION-SHEET: one recipe for
         // clickable cards): pointer cursor, border darkens, slight lift.
-        "group flex h-full min-h-(--sz-11_5rem) flex-col rounded-lg border border-border bg-card p-4 text-left cursor-pointer transition-colors hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group relative flex h-full min-h-(--sz-11_5rem) flex-col rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:shadow-md has-[[data-slot=skill-card-open]:focus-visible]:ring-2 has-[[data-slot=skill-card-open]:focus-visible]:ring-ring",
         card.required && "bg-muted/30",
       )}
     >
@@ -861,16 +851,24 @@ function SkillCard({
         {selectMode && canMove ? (
           <input
             type="checkbox"
-            className="mt-1 h-4 w-4 rounded border-border"
+            className="relative z-10 mt-1 h-4 w-4 rounded border-border"
             checked={selected}
             aria-label={`Select ${card.name}`}
-            onClick={(event) => event.stopPropagation()}
             onChange={(event) => onSelectChange?.(card, event.target.checked)}
           />
         ) : null}
         <SkillCardIcon card={card} />
         <div className="min-w-0 flex-1">
-          <div className="truncate font-mono text-sm font-medium text-foreground">{card.name}</div>
+          {/* The name opens the card; its hit area covers the card so the
+              checkbox and menu stay separate controls. */}
+          <button
+            type="button"
+            data-slot="skill-card-open"
+            onClick={() => onOpen(card)}
+            className="block w-full truncate text-left font-mono text-sm font-medium text-foreground cursor-pointer outline-none after:absolute after:inset-0 after:rounded-lg"
+          >
+            {card.name}
+          </button>
           <div className="truncate text-xs text-muted-foreground">
             by {card.author}{card.version ? ` · ${card.version}` : ""}
           </div>
@@ -887,7 +885,7 @@ function SkillCard({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="-mr-1 -mt-1 opacity-70 group-hover:opacity-100"
+                className="relative z-10 -mr-1 -mt-1 opacity-70 group-hover:opacity-100"
                 aria-label={`More actions for ${card.name}`}
                 onClick={(event) => event.stopPropagation()}
               >

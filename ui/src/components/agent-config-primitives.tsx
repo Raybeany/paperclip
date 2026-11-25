@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Children, cloneElement, isValidElement, useState, useRef, useEffect, useCallback, useId, type ReactElement } from "react";
 import {
   Tooltip,
   TooltipTrigger,
@@ -76,7 +76,7 @@ export function HintIcon({ text }: { text: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" className="inline-flex text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+        <button type="button" aria-label={text} className="inline-flex text-muted-foreground hover:text-foreground transition-colors">
           <HelpCircle className="h-3 w-3" />
         </button>
       </TooltipTrigger>
@@ -88,15 +88,27 @@ export function HintIcon({ text }: { text: string }) {
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode; configSection?: import("../adapters/types").AdapterConfigSection }) {
+  const generatedId = useId();
+  const controls = Children.toArray(children).filter(isLabelableControl);
+  const control = controls.length === 1 ? controls[0] : undefined;
+  const controlId = control ? control.props.id ?? generatedId : undefined;
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1">
-        <label className="text-xs text-muted-foreground">{label}</label>
+        <label htmlFor={controlId} className="text-xs text-muted-foreground">{label}</label>
         {hint && <HintIcon text={hint} />}
       </div>
-      {children}
+      {Children.map(children, (child) =>
+        control && isLabelableControl(child) ? cloneElement(child, { id: controlId }) : child)}
     </div>
   );
+}
+
+/** Form controls that take an id, so a Field can connect its label to them. */
+function isLabelableControl(child: unknown): child is ReactElement<{ id?: string; type?: string }> {
+  if (!isValidElement<{ type?: string }>(child)) return false;
+  if (child.type === "input") return child.props.type !== "hidden";
+  return child.type === "select" || child.type === "textarea" || child.type === DraftInput || child.type === DraftTextarea;
 }
 
 export function ToggleField({
@@ -294,12 +306,14 @@ export function DraftInput({
  * Auto-expanding textarea with draft state and blur-commit.
  */
 export function DraftTextarea({
+  id,
   value,
   onCommit,
   immediate,
   placeholder,
   minRows,
 }: {
+  id?: string;
   value: string;
   onCommit: (v: string) => void;
   immediate?: boolean;
@@ -325,6 +339,7 @@ export function DraftTextarea({
 
   return (
     <textarea
+      id={id}
       ref={textareaRef}
       className="w-full rounded-md border border-border px-2.5 py-1.5 bg-transparent outline-none text-sm font-mono placeholder:text-muted-foreground/40 resize-none overflow-hidden"
       placeholder={placeholder}

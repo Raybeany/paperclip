@@ -739,7 +739,7 @@ function AttributionAvatar({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span aria-label={accessibleLabel} data-testid={`issue-${testIdLabel}-avatar`}>
+        <span role="img" aria-label={accessibleLabel} data-testid={`issue-${testIdLabel}-avatar`}>
           {actor.kind === "agent" ? <AgentAvatar agent={actor} size={20} /> : (
             <Avatar size="xs" className="ring-2 ring-background">
               {actor.avatarUrl ? <AvatarImage src={actor.avatarUrl} alt="" /> : null}
@@ -1028,7 +1028,7 @@ export function IssueDetailLoadingState({
                   </span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-50 px-1 -mx-1 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground px-1 -mx-1 py-0.5">
                   <ProjectTile size="xs" />
                   No project
                 </span>
@@ -7567,7 +7567,7 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
           </span>
         ))}
         <ChevronRight className="h-3 w-3 shrink-0" />
-        <span className="text-foreground/60 truncate max-w-(--sz-200px)">
+        <span className="text-muted-foreground truncate max-w-(--sz-200px)">
           {issue.title}
         </span>
       </nav>
@@ -7764,7 +7764,7 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
             </span>
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-50 px-1 -mx-1 py-0.5">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground px-1 -mx-1 py-0.5">
             <ProjectTile size="xs" />
             No project
           </span>

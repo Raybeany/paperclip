@@ -433,7 +433,7 @@ describe("DiscoveryGrid IA presentation", () => {
     const node = await renderDiscoveryGrid({ collectionView: "authored", cards: [card], totalCount: 1, onOpenCard, onCreate, showBrowseRails: false });
     expect(node.querySelector('input[aria-label="Search my skills"]')).not.toBeNull();
     expect(node.querySelector('h1')?.textContent).toBe("My Skills");
-    const skillButton = Array.from(node.querySelectorAll<HTMLElement>('[role="button"]')).find(button => button.textContent?.includes("My Review Skill"))!;
+    const skillButton = Array.from(node.querySelectorAll<HTMLElement>('[data-slot="skill-card-open"]')).find(button => button.textContent?.includes("My Review Skill"))!;
     await click(skillButton);
     expect(onOpenCard).toHaveBeenCalledWith(card);
     const create = buttonsNamed(node, "Create new skill")[0]!;

@@ -327,7 +327,9 @@ resolve to normal; bold recipes resolve to semibold. The size ramp is nano
 2xl (24px) and 3xl (30px). Former micro usages use xs, including message times,
 account email and technical metrics. Navigation group labels and streamlined
 property section labels share the same sans/nano/normal/uppercase recipe,
-150% leading, 0.1em tracking and muted foreground at 60%.
+150% leading, 0.1em tracking and full muted foreground. Text is never faded below
+muted foreground: faded steps fall under AA contrast, so `ui/src/index.css` keeps
+them at the full muted color. Icons may use the lighter steps.
 
 These decisions live in `ui/src/index.css`, under the shared proposal marker.
 Compatibility aliases carry existing shared components onto the proposed

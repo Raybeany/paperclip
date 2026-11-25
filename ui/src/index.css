@@ -241,7 +241,7 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-highlight: var(--muted);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.5 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -1873,6 +1873,26 @@ html:has(.paperclip-app-shell[data-mobile="true"] [data-task-chat-shell]) #root 
   --shimmer-highlight: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
 }
 
+/* Faded secondary text falls below AA contrast, so text keeps the full muted
+   color. Icons keep their lighter step. */
+@layer utilities {
+  .text-muted-foreground\/40:not(:where(svg)),
+  .text-muted-foreground\/50:not(:where(svg)),
+  .text-muted-foreground\/60:not(:where(svg)),
+  .text-muted-foreground\/65:not(:where(svg)),
+  .text-muted-foreground\/70:not(:where(svg)),
+  .text-muted-foreground\/75:not(:where(svg)),
+  .text-muted-foreground\/80:not(:where(svg)),
+  .text-muted-foreground\/90:not(:where(svg)) {
+    color: var(--muted-foreground);
+  }
+  .placeholder\:text-muted-foreground\/40::placeholder,
+  .placeholder\:text-muted-foreground\/50::placeholder,
+  .placeholder\:text-muted-foreground\/60::placeholder {
+    color: var(--muted-foreground);
+  }
+}
+
 /* Utilities expected by shadcn base components (ui/attachment.tsx). Declared
    with @utility so variant forms (e.g. group-data-[state=uploading]:shimmer)
    compile under Tailwind v4. */
@@ -2857,7 +2877,8 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
    reads on dark surfaces. A single hue covers both modes. */
 .status-chip {
   background-color: color-mix(in srgb, var(--sc) 15%, white);
-  color: color-mix(in srgb, var(--sc) 82%, black);
+  /* 55% keeps every status hue above AA contrast on its light fill. */
+  color: color-mix(in srgb, var(--sc) 55%, black);
   border-color: var(--sc);
 }
 .dark .status-chip {
@@ -3936,8 +3957,12 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  box-sizing: content-box;
   width: var(--task-row-control-size);
   height: var(--task-row-control-size);
+  /* A 24px target around the 16px icon, without moving the row. */
+  padding: calc(var(--spacing) * 1);
+  margin: calc(var(--spacing) * -1);
 }
 .task-row-status-link svg { pointer-events: none; }
 .task-row-status-link:focus-visible {
@@ -4742,7 +4767,7 @@ html:has(.design-proposal-theme) .design-navigation-group-label {
   line-height: var(--design-sidebar-label-leading);
   letter-spacing: var(--design-sidebar-heading-tracking);
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  color: var(--muted-foreground);
 }
 .design-sidebar .design-sidebar-item { min-height: var(--design-sidebar-item-height); margin-inline: var(--design-sidebar-item-inset); padding-inline: var(--design-sidebar-item-inset); color: var(--design-sidebar-item-foreground); font-size: var(--design-sidebar-label-size); line-height: var(--design-sidebar-label-leading); }
 .design-sidebar .design-sidebar-item:is(:hover, [aria-current="page"]) { background: var(--design-sidebar-item-highlight); color: var(--design-sidebar-item-active-foreground); }
@@ -5087,7 +5112,7 @@ html:has(.design-proposal-theme) .design-navigation-group-label {
   --sidebar-accent-foreground: #202020;
   --border: #dedede;
   --muted: #eeeeee;
-  --muted-foreground: #6d6d6d;
+  --muted-foreground: #626262;
   --accent: #ebebeb;
   --accent-foreground: var(--foreground);
   --bubble-human-bg: var(--liveness-blue);
