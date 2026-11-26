@@ -5,6 +5,8 @@ import { GrokBotWorkSummary } from "@/components/GrokBotWorkSummary";
 import { PrimaryAgentCrownButton } from "@/components/primary-agent/PrimaryAgentPresentation";
 import { AiConnectionPoolRunDetails } from "@/components/ai-connections/AiConnectionPoolRunDetails";
 import { ProviderFailureNotice } from "@/components/ProviderFailureNotice";
+import { FailureExplanation } from "@/components/FailureExplanation";
+import { explainRunFailure } from "@/lib/runFailureExplanation";
 import { readProviderFailure } from "@paperclipai/shared";
 import { AgentConnectionInstructions } from "@/features/connections/ConnectionInstructions";
 import type { AgentInstructionCandidate, AgentInstructionsBundle } from "@paperclipai/shared";
@@ -3339,10 +3341,11 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
             {readProviderFailure(run.resultJson?.providerFailure) ? (
               <ProviderFailureNotice failure={readProviderFailure(run.resultJson?.providerFailure)!} />
             ) : run.error && (
-              <div className="text-xs">
-                <span className="text-red-600 dark:text-red-400">{run.error}</span>
-                {run.errorCode && <span className="text-muted-foreground ml-1">({run.errorCode})</span>}
-              </div>
+              <FailureExplanation explanation={explainRunFailure({ errorCode: run.errorCode, error: run.error })}
+                details={<div className="text-xs">
+                  <span className="whitespace-pre-wrap break-words text-red-600 dark:text-red-400">{run.error}</span>
+                  {run.errorCode && <span className="text-muted-foreground ml-1">({run.errorCode})</span>}
+                </div>} />
             )}
             {run.errorCode === "claude_auth_required" && adapterType === "claude_local" && (
               <div className="space-y-2">
