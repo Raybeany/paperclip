@@ -70,10 +70,11 @@ const queryClient = createAppQueryClient(
     defaultOptions: {
       queries: {
         staleTime: 30_000,
-        // Explicit so cross-tab-published cache entries for resources this tab
-        // isn't observing get collected promptly rather than lingering. Single
+        // Long enough that returning to a chat or task within half an hour shows
+        // it from memory. Bounded, so cache entries this tab isn't observing
+        // (including cross-tab-published ones) still get collected. Single
         // tuning point if we need to trim the cache footprint further.
-        gcTime: 5 * 60_000,
+        gcTime: 30 * 60_000,
         refetchOnWindowFocus: true,
       },
     },

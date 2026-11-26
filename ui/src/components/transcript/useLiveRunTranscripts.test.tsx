@@ -6,6 +6,7 @@ import type { LiveEvent } from "@paperclipai/shared";
 import { __liveUpdatesTestUtils, type CompanyLiveEventHandler } from "../../context/LiveUpdatesProvider";
 import { LiveTranscriptInterests } from "../../lib/live-transcript-interests";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ApiError } from "../../api/client";
 import { useLiveRunTranscripts } from "./useLiveRunTranscripts";
 import { TRANSCRIPT_REQUEST_TIMEOUT_MS } from "./read-transcript-request";
@@ -17,7 +18,8 @@ const { useQueryMock, logMock, buildTranscriptMock } = vi.hoisted(() => ({
   buildTranscriptMock: vi.fn((chunks: unknown[]) => chunks),
 }));
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@tanstack/react-query")>(),
   useQuery: useQueryMock,
 }));
 
@@ -93,6 +95,102 @@ describe("useLiveRunTranscripts", () => {
     globalThis.WebSocket = OriginalWebSocket;
     vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  describe("returning to finished runs", () => {
+    const row = (seq: number, chunk: string) => `${JSON.stringify({ seq, chunk, ts: `2026-10-24T00:00:0${seq}Z`, stream: "stdout" })}\n`;
+    const run = { id: "run-1", status: "succeeded", adapterType: "claude_local", logBytes: 100 };
+    let hydrated: boolean;
+    let pending: boolean;
+    let texts: string[];
+    function Harness({ source = run, companyId = "company-1", limit = 32_000 }: { source?: typeof run; companyId?: string; limit?: number }) {
+      const view = useLiveRunTranscripts({ companyId, runs: [source], logReadLimitBytes: limit });
+      hydrated = view.hydratedRunIds.has(source.id);
+      pending = view.isInitialHydrating;
+      texts = (view.transcriptByRun.get(source.id) ?? []).map(entry => (entry as unknown as { chunk: string }).chunk);
+      return null;
+    }
+    async function open(client: QueryClient, props: Parameters<typeof Harness>[0] = {}) {
+      const root = createRoot(document.createElement("div"));
+      await act(async () => root.render(<QueryClientProvider client={client}><Harness {...props} /></QueryClientProvider>));
+      return root;
+    }
+    const page = (content: string, nextOffset: number, logRef = "log-1") => ({ runId: "run-1", store: "memory", logRef, content, nextOffset });
+    async function visitOnce(client: QueryClient) {
+      logMock.mockResolvedValueOnce(page(row(1, "First") + row(2, "Second"), 100));
+      const root = await open(client);
+      expect(texts).toEqual(["First", "Second"]);
+      await act(async () => root.unmount());
+      logMock.mockClear();
+    }
+
+    it("shows the saved log before any request finishes and reads only what is new", async () => {
+      const client = new QueryClient();
+      await visitOnce(client);
+      let respond!: (value: ReturnType<typeof page>) => void;
+      logMock.mockImplementationOnce(() => new Promise(resolve => { respond = resolve; }));
+      const root = await open(client);
+      expect([hydrated, pending]).toEqual([true, false]);
+      expect(texts).toEqual(["First", "Second"]);
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(logMock).toHaveBeenLastCalledWith("run-1", 100, 32_000, expect.anything());
+      await act(async () => respond(page(row(3, "Third"), 150)));
+      expect(texts).toEqual(["First", "Second", "Third"]);
+      await act(async () => root.unmount());
+      logMock.mockImplementationOnce(() => new Promise(() => {}));
+      const again = await open(client);
+      expect(texts).toEqual(["First", "Second", "Third"]);
+      expect(logMock).toHaveBeenLastCalledWith("run-1", 150, 32_000, expect.anything());
+      await act(async () => again.unmount());
+    });
+
+    it("replaces the saved log when the run has a new one", async () => {
+      const client = new QueryClient();
+      await visitOnce(client);
+      logMock.mockResolvedValueOnce(page("", 100, "log-2"));
+      logMock.mockResolvedValueOnce(page(row(1, "Rewritten"), 40, "log-2"));
+      const root = await open(client);
+      expect(logMock).toHaveBeenNthCalledWith(2, "run-1", 0, 32_000, expect.anything());
+      expect(texts).toEqual(["Rewritten"]);
+      await act(async () => root.unmount());
+    });
+
+    it("does not repeat saved output when the window later expands", async () => {
+      const client = new QueryClient();
+      const source = { ...run, logBytes: 100_000 };
+      logMock.mockResolvedValueOnce(page(row(2, "Second"), 100_000));
+      const first = await open(client, { source });
+      await act(async () => first.unmount());
+      const root = await open(client, { source });
+      logMock.mockResolvedValueOnce(page(row(1, "First") + row(2, "Second"), 100_000));
+      await act(async () => root.render(<QueryClientProvider client={client}><Harness source={source} limit={256_000} /></QueryClientProvider>));
+      expect(texts).toEqual(["First", "Second"]);
+      await act(async () => root.unmount());
+    });
+
+    it.each([
+      ["another company", { companyId: "company-2" }],
+      ["a changed status", { source: { ...run, status: "failed" } }],
+      ["a run that is live again", { source: { ...run, status: "running" } }],
+    ])("does not reuse the saved log for %s", async (_name, props) => {
+      const client = new QueryClient();
+      await visitOnce(client);
+      logMock.mockImplementationOnce(() => new Promise(() => {}));
+      const root = await open(client, props);
+      expect([hydrated, texts]).toEqual([false, []]);
+      await act(async () => root.unmount());
+    });
+
+    it("does not save a read that failed", async () => {
+      const client = new QueryClient();
+      logMock.mockRejectedValueOnce(new Error("offline"));
+      const first = await open(client);
+      await act(async () => first.unmount());
+      logMock.mockImplementationOnce(() => new Promise(() => {}));
+      const root = await open(client);
+      expect(hydrated).toBe(false);
+      await act(async () => root.unmount());
+    });
   });
 
   it("pauses hidden-tab reads and resumes at the retained log offset", async () => {

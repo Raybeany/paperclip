@@ -15,7 +15,8 @@ const { useQueryMock, logMock, buildTranscriptMock } = vi.hoisted(() => ({
   buildTranscriptMock: vi.fn((chunks: unknown[]) => chunks),
 }));
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@tanstack/react-query")>(),
   useQuery: useQueryMock,
 }));
 

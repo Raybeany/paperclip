@@ -1,9 +1,9 @@
 import { TranscriptSequence } from "../../lib/transcript-sequence";
 import { useTranscriptLiveStream } from "../../context/LiveUpdatesProvider";
 import { usePageVisibility } from "../../lib/page-visibility";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { readTranscriptRequest } from "./read-transcript-request";
-import { useQuery } from "@tanstack/react-query";
+import { QueryClientContext, useQuery } from "@tanstack/react-query";
 import type { LiveEvent } from "@paperclipai/shared";
 import { ApiError } from "../../api/client";
 import { instanceSettingsApi } from "../../api/instanceSettings";
@@ -35,6 +35,23 @@ const TASK_VIEW_MAX_BYTES_PER_RUN = 2_000_000;
 // and silently drops already-rendered scrollback (PAP-462 B3). A run that is
 // genuinely gone stays absent past this window and is then pruned as before.
 const RUN_ABSENCE_PRUNE_GRACE_MS = 20_000;
+
+// A finished run's log outlives the view that read it, so returning to a
+// conversation shows it at once and reads only what was added since.
+const SAVED_LOG_QUERY = "run-log-transcript";
+const SAVED_LOG_MAX_CHARS = 256_000;
+
+interface SavedRunLog {
+  chunks: RunLogChunk[];
+  /** Absent when the finished run never stored a log. */
+  offset?: number;
+  identity?: string;
+  truncated: boolean;
+  trimmedSeqFloor?: number;
+  pendingRows?: string;
+  pendingRecords?: string;
+  seenChunkKeys: string[];
+}
 
 export interface RunTranscriptSource {
   createdAt?: string | Date;
@@ -122,6 +139,21 @@ export function useLiveRunTranscripts({
     [runs],
   );
   const normalizedRuns = useMemo(() => runs.map((run) => ({ ...run })), [runsKey]);
+  const queryClient = useContext(QueryClientContext);
+  const savedLogKey = useCallback(
+    (run: RunTranscriptSource) => [SAVED_LOG_QUERY, companyId, run.id, run.status, logReadLimitBytes, maxChunksPerRun ?? null, maxBytesPerRun] as const,
+    [companyId, logReadLimitBytes, maxChunksPerRun, maxBytesPerRun],
+  );
+  const savedLogs = useMemo(() => {
+    const saved = new Map<string, SavedRunLog>();
+    if (!queryClient || !companyId || !enabled) return saved;
+    for (const run of normalizedRuns) {
+      if (!isTerminalStatus(run.status)) continue;
+      const log = queryClient.getQueryData<SavedRunLog>(savedLogKey(run));
+      if (log) saved.set(run.id, log);
+    }
+    return saved;
+  }, [queryClient, companyId, enabled, normalizedRuns, savedLogKey]);
   const [chunksByRun, setChunksByRun] = useState<Map<string, RunLogChunk[]>>(new Map());
   const [hydratedRunIds, setHydratedRunIds] = useState<Set<string>>(new Set());
   const [errorsByRun, setErrorsByRun] = useState<ReadonlyMap<string, Error>>(new Map());
@@ -146,6 +178,10 @@ export function useLiveRunTranscripts({
     if (!value) { value = new TranscriptSequence(); sequencesRef.current.set(id, value); }
     return value;
   };
+  // Runs whose whole persisted log was read, with no live-only rows mixed in.
+  const completeLogRunIdsRef = useRef(new Set<string>());
+  const liveOutputRunIdsRef = useRef(new Set<string>());
+  const [completedReads, setCompletedReads] = useState(0);
   const gapPendingRef = useRef(new Set<string>());
   const refreshByRunRef = useRef(new Map<string, (force?: boolean) => void>());
   const requestCatchUp = (runId: string) => {
@@ -203,6 +239,7 @@ export function useLiveRunTranscripts({
     pendingLogRowsByRunRef.current.clear(); logOffsetByRunRef.current.clear(); logReadLimitByRunRef.current.clear();
     logIdentityRef.current.clear(); retiredLogIdentitiesRef.current.clear(); sequencesRef.current.clear();
     gapPendingRef.current.clear(); missingTerminalLogRunIdsRef.current.clear();
+    completeLogRunIdsRef.current.clear(); liveOutputRunIdsRef.current.clear();
     absenceDeadlineByRunRef.current.clear(); prevKnownRunIdsRef.current.clear(); transcriptCacheRef.current.clear();
   }, [companyId]);
 
@@ -338,7 +375,9 @@ export function useLiveRunTranscripts({
     for (const map of [logIdentityRef.current, retiredLogIdentitiesRef.current, sequencesRef.current]) {
       for (const id of map.keys()) if (!retainedRunIds.has(id)) map.delete(id);
     }
-    for (const id of gapPendingRef.current) if (!retainedRunIds.has(id)) gapPendingRef.current.delete(id);
+    for (const ids of [gapPendingRef.current, completeLogRunIdsRef.current, liveOutputRunIdsRef.current]) {
+      for (const id of ids) if (!retainedRunIds.has(id)) ids.delete(id);
+    }
 
     // Re-run once the nearest grace window elapses so a run that stays gone is
     // pruned even if `normalizedRuns` never changes again.
@@ -357,6 +396,7 @@ export function useLiveRunTranscripts({
         const runId = readString(payload["runId"]);
         if (!runId) return;
         if (!runById.has(runId)) return;
+        liveOutputRunIdsRef.current.add(runId);
 
         if (event.type === "heartbeat.run.log") {
           const binding = bindLog(runId, payload.logStore, payload.logRef);
@@ -421,6 +461,21 @@ export function useLiveRunTranscripts({
     const retryTimers = new Map<string, number>();
     const pendingRefresh = new Set<string>();
 
+    const restoreSavedLog = (run: RunTranscriptSource) => {
+      const saved = savedLogs.get(run.id);
+      if (!saved || saved.offset === undefined || logOffsetByRunRef.current.has(run.id)) return;
+      logOffsetByRunRef.current.set(run.id, saved.offset);
+      logReadLimitByRunRef.current.set(run.id, logReadLimitBytes);
+      if (saved.identity) logIdentityRef.current.set(run.id, saved.identity);
+      if (saved.trimmedSeqFloor !== undefined) trimmedSeqFloorByRunRef.current.set(run.id, saved.trimmedSeqFloor);
+      if (saved.pendingRows) pendingLogRowsByRunRef.current.set(run.id, saved.pendingRows);
+      if (saved.pendingRecords) pendingLogRowsByRunRef.current.set(`${run.id}:records`, saved.pendingRecords);
+      for (const key of saved.seenChunkKeys) seenChunkKeysRef.current.add(key);
+      setChunksByRun((previous) => previous.has(run.id) ? previous : new Map(previous).set(run.id, saved.chunks));
+      if (saved.truncated) setTruncatedRunIds((previous) => previous.has(run.id) ? previous : new Set(previous).add(run.id));
+      setHydratedRunIds((previous) => previous.has(run.id) ? previous : new Set(previous).add(run.id));
+    };
+
     const readRunLog = async (run: RunTranscriptSource) => {
       if (cancelled || missingTerminalLogRunIdsRef.current.has(run.id) || inFlightRunIds.has(run.id)) {
         return;
@@ -429,6 +484,8 @@ export function useLiveRunTranscripts({
       window.clearTimeout(retryTimers.get(run.id));
       retryTimers.delete(run.id);
       inFlightRunIds.add(run.id);
+      completeLogRunIdsRef.current.delete(run.id);
+      restoreSavedLog(run);
       let failed = false;
       let alignStartToRecord = !logOffsetByRunRef.current.has(run.id);
       let offset = logOffsetByRunRef.current.get(run.id) ?? resolveInitialLogOffset(run, logReadLimitBytes);
@@ -442,6 +499,7 @@ export function useLiveRunTranscripts({
           rewinding = true;
         }
       }
+      const startOffset = offset;
       let recordInitialWindow = previousReadLimit === undefined || rewinding;
       try {
         for (;;) {
@@ -510,6 +568,11 @@ export function useLiveRunTranscripts({
       } finally {
         inFlightRunIds.delete(run.id);
         if (!cancelled) {
+          if (!failed && isTerminalStatus(run.status)) {
+            completeLogRunIdsRef.current.add(run.id);
+            // The rows may have rendered before the read was known to be complete.
+            if (logOffsetByRunRef.current.get(run.id) !== startOffset) setCompletedReads((value) => value + 1);
+          }
           if (pendingRefresh.has(run.id)) {
             missingTerminalLogRunIdsRef.current.delete(run.id);
             void readRunLog(run);
@@ -557,6 +620,39 @@ export function useLiveRunTranscripts({
   }, [visible, enableRealtimeUpdates, logPollIntervalMs, logReadLimitBytes, normalizedRuns, runIdsKey, retryGeneration, enabled, companyId, stream.healthy, stream.epoch]);
 
 
+  // Runs after the read's own state updates, so it stores exactly what is shown.
+  useEffect(() => {
+    if (!queryClient || !companyId) return;
+    for (const run of normalizedRuns) {
+      if (!completeLogRunIdsRef.current.has(run.id) || liveOutputRunIdsRef.current.has(run.id)) continue;
+      const chunks = chunksByRun.get(run.id) ?? EMPTY_RUN_LOG_CHUNKS;
+      const offset = logOffsetByRunRef.current.get(run.id);
+      const key = savedLogKey(run);
+      const previous = queryClient.getQueryData<SavedRunLog>(key);
+      if (previous && previous.chunks === chunks && previous.offset === offset) continue;
+      if (chunks.reduce((size, item) => size + item.chunk.length, 0) > SAVED_LOG_MAX_CHARS) continue;
+      queryClient.setQueryData<SavedRunLog>(key, {
+        chunks,
+        offset,
+        identity: logIdentityRef.current.get(run.id),
+        truncated: truncatedRunIds.has(run.id),
+        trimmedSeqFloor: trimmedSeqFloorByRunRef.current.get(run.id),
+        pendingRows: pendingLogRowsByRunRef.current.get(run.id),
+        pendingRecords: pendingLogRowsByRunRef.current.get(`${run.id}:records`),
+        seenChunkKeys: [...seenChunkKeysRef.current].filter((item) => item.includes(`:${run.id}:`)),
+      });
+    }
+  }, [queryClient, companyId, normalizedRuns, chunksByRun, hydratedRunIds, truncatedRunIds, completedReads, savedLogKey]);
+
+  const availableRunIds = useMemo(
+    () => savedLogs.size ? new Set([...savedLogs.keys(), ...hydratedRunIds]) : hydratedRunIds,
+    [savedLogs, hydratedRunIds],
+  );
+  const availableTruncatedRunIds = useMemo(() => {
+    const unread = [...savedLogs].filter(([id, saved]) => saved.truncated && !hydratedRunIds.has(id)).map(([id]) => id);
+    return unread.length ? new Set([...truncatedRunIds, ...unread]) : truncatedRunIds;
+  }, [savedLogs, hydratedRunIds, truncatedRunIds]);
+
   const transcriptByRun = useMemo(() => {
     const next = new Map<string, TranscriptEntry[]>();
     const censorUsernameInLogs = generalSettings?.censorUsernameInLogs === true;
@@ -564,7 +660,7 @@ export function useLiveRunTranscripts({
     const currentRunIds = new Set<string>();
     for (const run of normalizedRuns) {
       currentRunIds.add(run.id);
-      const chunks = chunksByRun.get(run.id) ?? EMPTY_RUN_LOG_CHUNKS;
+      const chunks = chunksByRun.get(run.id) ?? savedLogs.get(run.id)?.chunks ?? EMPTY_RUN_LOG_CHUNKS;
       const cached = cache.get(run.id);
       if (
         cached &&
@@ -596,14 +692,14 @@ export function useLiveRunTranscripts({
       }
     }
     return next;
-  }, [chunksByRun, generalSettings?.censorUsernameInLogs, normalizedRuns, parserTick]);
+  }, [chunksByRun, generalSettings?.censorUsernameInLogs, normalizedRuns, parserTick, savedLogs]);
 
   return {
     transcriptByRun,
-    hydratedRunIds, truncatedRunIds, errorsByRun, retry,
-    isInitialHydrating: normalizedRuns.some((run) => canReadPersistedLog(run) && !hydratedRunIds.has(run.id)),
+    hydratedRunIds: availableRunIds, truncatedRunIds: availableTruncatedRunIds, errorsByRun, retry,
+    isInitialHydrating: normalizedRuns.some((run) => canReadPersistedLog(run) && !availableRunIds.has(run.id)),
     hasOutputForRun(runId: string) {
-      return (chunksByRun.get(runId)?.length ?? 0) > 0 || runById.get(runId)?.hasStoredOutput === true;
+      return (chunksByRun.get(runId)?.length ?? savedLogs.get(runId)?.chunks.length ?? 0) > 0 || runById.get(runId)?.hasStoredOutput === true;
     },
   };
 }
