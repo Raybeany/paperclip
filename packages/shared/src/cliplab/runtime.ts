@@ -6,6 +6,8 @@ import { centeredGaze, easeGaze, pointerGaze } from './gaze.js'
 export interface CharacterOptions {
   animation?: string; followCursor?: boolean; followRotation?: boolean;
   trackingRegion?: HTMLElement; trackingScope?: 'region' | 'page'; displaySize?: number; onComplete?: () => void; onError?: () => void;
+  /** Called after every draw, so layered artwork moves in the same frame. */
+  onFrame?: (frame: ReturnType<CharacterRenderer['frame']>) => void;
 }
 
 /** One renderer; no frame callbacks or pointer listeners while hidden. */
@@ -22,7 +24,10 @@ export function createCharacter(target: HTMLElement, definition: Definition, opt
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const coarse = window.matchMedia('(pointer: coarse)')
   const canRun = () => !destroyed && visible && !document.hidden && !reduced.matches
-  const render = () => renderer.render({ ...definition.character, followCursor: options.followCursor !== false, followRotation: options.followRotation !== false }, sampleDefinition(definition, animation, elapsed), { cursor: gaze, reducedMotion: reduced.matches }, gaze)
+  const render = () => {
+    renderer.render({ ...definition.character, followCursor: options.followCursor !== false, followRotation: options.followRotation !== false }, sampleDefinition(definition, animation, elapsed), { cursor: gaze, reducedMotion: reduced.matches }, gaze)
+    options.onFrame?.(renderer.frame())
+  }
   const pointer = (event: PointerEvent) => { if (event.pointerType !== 'touch') goal = pointerGaze(event, target.getBoundingClientRect()) }
   const leave = () => { goal = centeredGaze() }
   function track(enabled: boolean) {

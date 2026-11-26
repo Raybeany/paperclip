@@ -5,6 +5,7 @@ import { useDesignSandbox } from "@/context/DesignSandboxContext";
 import { DesignSandboxSidebar } from "./DesignSandboxSidebar";
 import { BoardDialogs } from "./BoardDialogs";
 import { SetupWizardSidebarOutlet } from "./SetupWizard";
+import { AgentOutfitProvider } from "@/context/AgentOutfitContext";
 import { ChatSetupSidebarProvider } from "@/context/ChatSetupSidebarContext";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -588,6 +589,7 @@ export function Layout({ sidebarSections }: { sidebarSections?: ReactNode }) {
     <CoordinatorPresentation.Provider value={coordinatorWorkspaceEnabled}>
     <CoordinatorChatReferencesProvider enabled={coordinatorWorkspaceEnabled}>
     <ChatSetupSidebarProvider>
+    <AgentOutfitProvider companyId={selectedCompanyId}>
       <div
       ref={mobileViewportRef}
       data-mobile={isMobile ? "true" : undefined}
@@ -777,6 +779,7 @@ export function Layout({ sidebarSections }: { sidebarSections?: ReactNode }) {
       {isMobile ? <AnnouncementWell health={health} placement="floating" /> : null}
       <PluginAppShellOverlays localTrusted={health?.deploymentMode === "local_trusted"} />
       </div>
+    </AgentOutfitProvider>
     </ChatSetupSidebarProvider>
     </CoordinatorChatReferencesProvider>
     </CoordinatorPresentation.Provider>

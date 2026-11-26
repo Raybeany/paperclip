@@ -459,6 +459,11 @@ export class CharacterRenderer {
     return { ...this.captured, options: this.options, camera: this.camera, body: this.body, lightFill: this.lightFill, face: this.face, prop: this.prop, shadow: this.shadow, eyeGazes: this.resolvedEyes }
   }
   orientation() { return this.root.quaternion.clone() }
+  /** Where the last render put the body, for artwork layered over the canvas. */
+  frame() {
+    const { rotation, position, scale } = this.root, degrees = 180 / Math.PI
+    return { rotation: { x: rotation.x * degrees, y: rotation.y * degrees, z: rotation.z * degrees }, lift: position.y, scale: { x: scale.x, y: scale.y }, half: this.camera.top }
+  }
   eyeGazes() { return this.resolvedEyes ? { left: { ...this.resolvedEyes.left }, right: { ...this.resolvedEyes.right } } : undefined }
   dispose() {
     if (this.disposed) return

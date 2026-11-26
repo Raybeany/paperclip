@@ -135,6 +135,7 @@ import { agentRouteRef } from "../lib/utils";
 import { syncAgentRouteAfterRename } from "./agent-detail/agent-route";
 import { InstructionsBundleSettings } from "./agent-detail/InstructionsBundleSettings";
 import { AgentAllowedConnectors } from "./agent-detail/AgentAllowedConnectors";
+import { AgentCustomizeTab } from "./AgentCustomizeTab";
 import { AgentAuditTab } from "./AgentAuditTab";
 import { AgentDirectReports } from "./agent-detail/AgentDirectReports";
 import { instructionFileDateLabel } from "./agent-detail/instruction-file-date";
@@ -334,6 +335,8 @@ const OVERVIEW_ACTIVITY_LIMIT = 200;
 
 function agentViewDescription(view: AgentDetailView, name: string): string | null {
   switch (view) {
+    case "customize":
+      return `Choose how ${name} looks.`;
     case "runtime":
       return `How ${name} runs: harness, model and environment.`;
     case "secrets":
@@ -806,7 +809,7 @@ export function AgentDetail() {
   const hasInvalidOrgChain = agent.orgChainHealth?.status === "invalid_org_chain";
   const pausedEscalationWarning = !hasInvalidOrgChain ? agent.orgChainHealth?.escalationWarning ?? null : null;
   const showConfigActionBar = (
-    activeView === "runtime" || activeView === "instructions" || activeView === "secrets"
+    activeView === "runtime" || activeView === "instructions" || activeView === "secrets" || activeView === "customize"
   );
   const showLeftAgentNotice = agentMembershipState === "left" && !dismissedLeftAgentIds.has(agent.id);
   const agentMembershipPending =
@@ -886,7 +889,7 @@ export function AgentDetail() {
       {/* Header */}
       <header className="agent-character-header flex items-center gap-2">
         <div role="img" aria-label={`${agent.name} avatar`} className="shrink-0">
-          <AgentCharacter agent={agent} state={characterStateForAgent(currentAgent.status) === "rest" ? "idle" : characterStateForAgent(currentAgent.status)} size={128} className="agent-header-character" trackingScope="page" followCursor />
+          <AgentCharacter agent={agent} state={characterStateForAgent(currentAgent.status) === "rest" ? "idle" : characterStateForAgent(currentAgent.status)} size={128} motion={activeView === "customize" ? "still" : "auto"} className="agent-header-character" trackingScope="page" followCursor />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
@@ -976,7 +979,7 @@ export function AgentDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              You have unsaved changes to {agent.name}&rsquo;s {activeView === "runtime" ? "harness settings" : activeView === "secrets" ? "secrets and variables" : activeView === "advanced" ? "configuration" : "instructions"}. If you continue, they&rsquo;ll be lost.
+              You have unsaved changes to {agent.name}&rsquo;s {activeView === "runtime" ? "harness settings" : activeView === "secrets" ? "secrets and variables" : activeView === "advanced" ? "configuration" : activeView === "customize" ? "look" : "instructions"}. If you continue, they&rsquo;ll be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:justify-between">
@@ -1094,6 +1097,19 @@ export function AgentDetail() {
         />
       )}
 
+      {activeView === "customize" && (
+        <AgentCustomizeTab
+          key={agent.id}
+          agent={agent}
+          companyId={resolvedCompanyId ?? undefined}
+          onSaved={onIdentitySaved}
+          onDirtyChange={setConfigDirty}
+          onSaveActionChange={setSaveConfigAction}
+          onCancelActionChange={setCancelConfigAction}
+          onSavingChange={setConfigSaving}
+        />
+      )}
+
       {activeView === "instructions" && (
         <div><PromptsTab
           agent={agent}
@@ -1208,10 +1224,10 @@ export function AgentDetail() {
         />
       )}
 
-      {showConfigActionBar && activeView === "instructions" && <AgentConfigSaveBar key={agent.id} dirty={configDirty} saving={configSaving} savedVersion={identitySaveVersion}
+      {showConfigActionBar && (activeView === "instructions" || activeView === "customize") && <AgentConfigSaveBar key={`${agent.id}:${activeView}`} dirty={configDirty} saving={configSaving} savedVersion={identitySaveVersion}
         onDiscard={() => cancelConfigActionRef.current?.()}
         onSave={() => { Promise.resolve(saveConfigActionRef.current?.()).catch(() => {}); }} />}
-      {showConfigActionBar && activeView !== "instructions" && <footer className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background py-4">
+      {showConfigActionBar && activeView !== "instructions" && activeView !== "customize" && <footer className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background py-4">
         <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
           {configSaving ? null : configDirty ? (
             <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-(--agent-detail-dot-unsaved)" />

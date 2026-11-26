@@ -8,6 +8,7 @@ import {
   KeyRound,
   Library,
   MessageSquare,
+  Palette,
   PlayCircle,
   ReceiptText,
   Settings2,
@@ -30,6 +31,7 @@ import {
 
 const localIcons = {
   overview: Sparkles,
+  customize: Palette,
   instructions: Fingerprint,
   skills: Library,
   runtime: Settings2,

@@ -3640,6 +3640,30 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   display: none;
 }
 
+/* Agent outfit artwork. Fixed colors: an outfit looks the same in every theme. */
+:root {
+  --agent-customize-columns: minmax(0, 18rem) minmax(0, 1fr);
+  --agent-outfit-color-ink: #2b3036;
+  --agent-outfit-color-white: #f7f5ef;
+  --agent-outfit-color-red: #e0393e;
+  --agent-outfit-color-orange: #f28a25;
+  --agent-outfit-color-yellow: #ffc93c;
+  --agent-outfit-color-green: #2c9d62;
+  --agent-outfit-color-blue: #2f6fe0;
+  --agent-outfit-color-pink: #f27aa9;
+  --agent-outfit-gold: var(--agent-outfit-color-yellow);
+  --agent-outfit-goldLight: #fff0b8;
+  --agent-outfit-paper: var(--agent-outfit-color-white);
+  --agent-outfit-wood: #f3d5a6;
+  --agent-outfit-ribbon: var(--agent-outfit-color-red);
+  --agent-outfit-glass: rgb(255 255 255 / 25%);
+  --agent-outfit-steam: #9aa0a6;
+}
+.agent-outfit-piece {
+  --agent-outfit-light: color-mix(in oklab, var(--agent-outfit-base), white 30%);
+  --agent-outfit-dark: color-mix(in oklab, var(--agent-outfit-base), black 30%);
+}
+
 /* Immutable ClipLab cap-v1 artwork tokens. New artwork gets a new version. */
 :root {
   --agent-cap-v1-bubblegum-sky-a: #8bd4ff;

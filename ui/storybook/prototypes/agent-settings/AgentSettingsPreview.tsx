@@ -47,6 +47,7 @@ import "./settings.css";
 
 const descriptions: Record<AgentLocalDetailView, string> = {
   advanced: "Edit the agent’s configuration as YAML.",
+  customize: "Choose how your agent looks.",
   overview: "A snapshot of Nova’s work, capabilities, and current setup.",
   instructions: "The files that guide how your agent thinks and works.",
   skills: "Choose the skills your agent brings to each task.",

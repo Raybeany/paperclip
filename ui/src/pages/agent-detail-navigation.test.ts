@@ -14,6 +14,7 @@ describe("agent detail navigation", () => {
     expect(AGENT_DETAIL_NAVIGATION.map((section) => section.label)).toEqual(["Agent", "Audit"]);
     expect(AGENT_DETAIL_NAVIGATION.flatMap((section) => section.items.map((item) => item.value))).toEqual([
       "overview",
+      "customize",
       "instructions",
       "runtime",
       "secrets",
