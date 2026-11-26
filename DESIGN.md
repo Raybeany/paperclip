@@ -86,6 +86,8 @@ Background refreshes and history expansion keep the conversation and composer
 mounted. A failed history request shows an inline retry without hiding readable
 content. Full-history and classic views retain the bounded 15-second initial wait.
 
+Switching between agent chats shows no placeholder when the conversation is ready quickly: the message box holds its place and the messages fade in. A slow open shows the agent and “Opening chat with …” after a short delay. Do not use gray bars for a chat.
+
 Standing agent chats open with the latest 20 contiguous messages and hydrate only their runs. Upward scrolling requests earlier pages; a fixed-height status slot says “Loading earlier messages…” while the page is pending. Preserve the logical row anchor and mounted composer through prepends and background refresh. Retry failed history inline without automatic retry loops. Answer receipts and created-task history use the same scrolling affordance.
 
 Only the viewer's own human comments sit on the right in blue bubbles. Agents

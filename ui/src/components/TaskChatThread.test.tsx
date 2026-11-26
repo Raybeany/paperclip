@@ -412,6 +412,21 @@ it.each([true, false])("defers hidden content until history is ready and keeps i
   expect(container.querySelector('.task-chat-history-pending')).toBeNull();
 });
 
+it("opens a worker's chat without gray placeholder bars, then fades the messages in", async () => {
+  const agent = { id: "agent-1", name: "Daven" } as Agent;
+  const props = { issueId: "chat-issue", compactHistory: true, conversationMode: true, issueAssigneeAgentId: agent.id, agentMap: new Map([[agent.id, agent]]), comments: createLongThreadComments(), onAdd: async () => {} };
+  render(<TaskChatThread {...props} initialHistoryPending />);
+  const loading = container.querySelector('[data-testid="task-chat-history-loading"]')!;
+  expect(loading.querySelector('[data-slot="skeleton"]')).toBeNull();
+  expect(loading.textContent).toBe("Opening chat with Daven…");
+  expect(loading.querySelector('[data-testid="task-chat-loading-composer"]')).not.toBeNull();
+  expect(container.querySelector(".task-chat-history-reveal")).toBeNull();
+  render(<TaskChatThread {...props} />);
+  await settleThreadLayout();
+  expect(container.querySelector('[data-testid="task-chat-history-loading"]')).toBeNull();
+  expect(container.querySelector('[data-testid="task-chat-history-content"]')?.classList.contains("task-chat-history-reveal")).toBe(true);
+});
+
 it.each([true, false])("coordinates compact cards before first reveal and retains content during refresh (mobile=%s)", async (mobile) => {
   sidebarState.isMobile = mobile;
   const props = { issueId: "cold-issue", compactHistory: true, comments: createLongThreadComments(), threadHeader: <h2>Saved task title</h2>, historyControl: <button>More messages</button>, onAdd: async () => {} };

@@ -1915,6 +1915,9 @@ export function DesignGuide() {
             <div className="coordinator-workspace relative h-96 overflow-hidden rounded-md border border-border">
               <TaskChatLoadingShell mobile streamlined coordinator />
             </div>
+            <div className="relative h-96 overflow-hidden rounded-md border border-border">
+              <TaskChatLoadingShell mobile={false} streamlined coordinator={false} agent={{ id: "design-guide", name: "Nova" }} />
+            </div>
           </div>
         </SubSection>
       </Section>

@@ -3347,7 +3347,7 @@ export function TaskChatThread(props: TaskChatThreadProps) {
           >
             {!historyRevealed ? (
               <div className="absolute inset-0 z-10 overflow-hidden bg-background" data-testid="task-chat-history-loading">
-                <TaskChatLoadingShell mobile={isMobile} streamlined={streamlinedUiEnabled} coordinator={coordinatorEnabled} />
+                <TaskChatLoadingShell mobile={isMobile} streamlined={streamlinedUiEnabled} coordinator={coordinatorEnabled} agent={conversationMode && issueAssigneeAgentId ? agentMap?.get(issueAssigneeAgentId) : undefined} />
               </div>
             ) : null}
             <div
@@ -3373,7 +3373,7 @@ export function TaskChatThread(props: TaskChatThreadProps) {
                 data-testid="task-chat-history-content"
                 className={cn(
                   "flex min-h-0 flex-1 flex-col",
-                  !historyRevealed && "invisible",
+                  historyRevealed ? "task-chat-history-reveal" : "invisible",
                 )}
                 inert={!historyRevealed}
               >

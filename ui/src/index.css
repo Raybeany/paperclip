@@ -467,6 +467,8 @@
   --motion-sandbox-playback-step: 4s;
   --motion-turn-fold: 380ms;            /* finished-turn activity folding into its summary line */
   --motion-conversation-handoff-fade: 180ms;
+  --motion-chat-loading-delay: 350ms;   /* wait before a chat shows a loading placeholder */
+  --motion-chat-reveal: 200ms;          /* finished chat messages fading in */
   --motion-conversation-handoff-fold: 480ms;
   --motion-turn-meta: var(--motion-duration-fast); /* finished-turn hover metadata reveal */
   --motion-line-scroll: 240ms;          /* completed interstitial line sliding out of the 1lh live-line viewport */
@@ -1294,6 +1296,7 @@ html:has(.paperclip-app-shell[data-mobile="true"] [data-task-chat-shell]) #root 
     --motion-plan-entry-stagger: 0ms;
     --motion-streaming-cursor-blink: 0ms;
     --motion-turn-fold: 0ms;
+    --motion-chat-reveal: 0ms;
     --motion-line-scroll: 0ms;
     /* --motion-interstitial-dwell is deliberately NOT zeroed: it is a pacing
        hold, not a movement — zeroing it would make the interstitial line churn
@@ -3494,6 +3497,16 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
 
 .task-chat-loading-shell .animate-pulse {
   animation: none;
+}
+
+/* A quick open shows no placeholder at all; a slow one fades it in. The finished
+   messages then fade in rather than snapping into place. */
+.task-chat-loading-delayed {
+  animation: tc-fade-in var(--motion-duration-base) var(--motion-ease-out) var(--motion-chat-loading-delay) both;
+}
+
+.task-chat-history-reveal {
+  animation: tc-fade-in var(--motion-chat-reveal) var(--motion-ease-out);
 }
 
 /* Concealed mobile history must not grow the document between responses.

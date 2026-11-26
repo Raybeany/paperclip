@@ -960,9 +960,11 @@ function useTaskDetailInterfaceMode(conversationMode = false) {
 export function IssueDetailLoadingState({
   headerSeed,
   titleEditor,
+  agent,
 }: {
   headerSeed: ReturnType<typeof readIssueDetailHeaderSeed>;
   titleEditor?: React.ReactNode;
+  agent?: React.ComponentProps<typeof TaskChatLoadingShell>["agent"];
 }) {
   const identifier =
     headerSeed?.identifier ?? headerSeed?.id.slice(0, 8) ?? null;
@@ -983,7 +985,7 @@ export function IssueDetailLoadingState({
   }
   if (taskChatShellEnabled) {
     return <div data-task-chat-shell="" className="flex h-full min-h-0 w-full flex-1 flex-col">
-      <TaskChatLoadingShell mobile={isMobile} streamlined={streamlinedUiEnabled} coordinator={coordinatorWorkspaceEnabled} />
+      <TaskChatLoadingShell mobile={isMobile} streamlined={streamlinedUiEnabled} coordinator={coordinatorWorkspaceEnabled} agent={agent} />
     </div>;
   }
 
@@ -7367,7 +7369,7 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
     (!issue && !accessError && (isLoading || coreIssueQuery.isPending || coreIssueView.kind === "reconnecting")) ||
     (issueView.kind === "reconnecting" && (!issue || (isPlaceholderData && !coreIssueQuery.data)))
   )
-    return <IssueDetailLoadingState headerSeed={issueHeaderSeed} />;
+    return <IssueDetailLoadingState headerSeed={issueHeaderSeed} agent={conversation?.agent} />;
   if (!issue || (issueView.kind === "error" && isPlaceholderData && !coreIssueQuery.data)) {
     const pageError = accessError ?? error ?? coreIssueQuery.error;
     if (pageError) {
@@ -7393,6 +7395,7 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
   if (!taskRouteReady || !taskInterfaceSettingsLoaded || loadingTitleIssueId === issue.id)
     return (
       <IssueDetailLoadingState
+        agent={conversation?.agent}
         titleEditor={taskRouteReady && currentUserId && !issue.conversationAgentId ? (
           // The known account can edit the title without choosing a task
           // presentation before its workspace preference has loaded.

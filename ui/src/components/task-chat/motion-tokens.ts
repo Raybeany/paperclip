@@ -63,6 +63,8 @@ export const MOTION_TOKENS: MotionTokenDef[] = [
   { name: "--motion-count-tween", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
   { name: "--motion-streaming-cursor-blink", group: "States", kind: "time", min: 0, max: 3000, step: 20 },
   { name: "--motion-turn-fold", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
+  { name: "--motion-chat-loading-delay", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
+  { name: "--motion-chat-reveal", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
   { name: "--motion-conversation-handoff-fade", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
   { name: "--motion-conversation-handoff-fold", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
   { name: "--motion-conversation-word-fade", group: "States", kind: "time", min: 0, max: 1500, step: 10 },
