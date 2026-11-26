@@ -143,7 +143,7 @@ describe("BreadcrumbBar", () => {
     }
     await act(async () => root.render(<BreadcrumbProvider><ChatHeader /></BreadcrumbProvider>));
     expect(container.querySelector("h1")?.textContent).toBe("Chat");
-    expect(container.querySelector("h1")?.className).toContain("uppercase");
+    expect(container.querySelector("h1")?.className).toContain("font-heading");
     expect(container.querySelector('[aria-label^="Switch agent"]')).toBeNull();
     expect(container.querySelector('[aria-label^="Pin "]')).toBeNull();
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Show properties"]')!.click());
@@ -282,8 +282,8 @@ describe("BreadcrumbBar", () => {
     expect(header?.classList).toContain("px-4");
     expect(header?.classList).toContain("md:px-6");
     expect(header?.classList).not.toContain("px-3");
-    expect(tasksLink?.classList).toContain("font-semibold");
-    expect(tasksLink?.classList).toContain("tracking-wider");
+    expect(tasksLink?.classList).toContain("font-medium");
+    expect(tasksLink?.classList).toContain("text-muted-foreground");
     expect(tasksLink?.classList).toContain("text-muted-foreground");
     expect(tasksLink?.classList).toContain("hover:text-foreground");
     expect(tasksLink?.classList).not.toContain("font-bold");
@@ -292,7 +292,7 @@ describe("BreadcrumbBar", () => {
     expect(identifier?.textContent).toBe("TES-1");
   });
 
-  it("styles the root crumb as an uppercase muted header on every detail view", async () => {
+  it("styles the root crumb as a muted header on every detail view", async () => {
     await act(async () => {
       root.render(
         <BreadcrumbProvider>
@@ -302,9 +302,9 @@ describe("BreadcrumbBar", () => {
     });
 
     const rootCrumb = container.querySelector<HTMLAnchorElement>('a[href="/issues"]');
-    expect(rootCrumb?.classList).toContain("font-semibold");
-    expect(rootCrumb?.classList).toContain("uppercase");
-    expect(rootCrumb?.classList).toContain("tracking-wider");
+    expect(rootCrumb?.classList).toContain("font-medium");
+    expect(rootCrumb?.classList).toContain("text-muted-foreground");
+    expect(rootCrumb?.classList).not.toContain("uppercase");
     expect(rootCrumb?.classList).toContain("text-muted-foreground");
     expect(rootCrumb?.classList).toContain("hover:text-foreground");
   });

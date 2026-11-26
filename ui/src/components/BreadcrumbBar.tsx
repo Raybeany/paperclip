@@ -170,7 +170,7 @@ export function BreadcrumbBar({ taskDetailLayout = false, showPropertiesToggle =
                           to={crumb.href} onClick={crumb.onClick}
                           className={cn(
                             "flex min-w-0 items-baseline gap-1.5",
-                            i === 0 && "font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground",
+                            i === 0 && "font-medium text-muted-foreground hover:text-foreground",
                           )}
                         >
                           {crumb.leading && (
@@ -185,7 +185,7 @@ export function BreadcrumbBar({ taskDetailLayout = false, showPropertiesToggle =
                           to={crumb.href} onClick={crumb.onClick}
                           className={cn(
                             "min-w-0 truncate",
-                            i === 0 && "font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground",
+                            i === 0 && "font-medium text-muted-foreground hover:text-foreground",
                           )}
                         >
                           {crumb.label}
@@ -211,9 +211,9 @@ export function BreadcrumbBar({ taskDetailLayout = false, showPropertiesToggle =
         {menuButton}
         <div className="min-w-0 overflow-hidden flex-1">
           {breadcrumbs[0].control ? (
-            <h1 className="min-w-0 text-sm font-semibold uppercase tracking-wider">{breadcrumbs[0].control}</h1>
+            <h1 className="min-w-0 font-heading text-lg font-semibold tracking-tight">{breadcrumbs[0].control}</h1>
           ) : breadcrumbs[0].leading || breadcrumbs[0].identifier ? (
-            <h1 className="flex items-baseline gap-1.5 text-sm font-semibold uppercase tracking-wider">
+            <h1 className="flex items-baseline gap-1.5 font-heading text-lg font-semibold tracking-tight">
               {breadcrumbs[0].leading && (
                 <span className="flex shrink-0 items-center self-center">{breadcrumbs[0].leading}</span>
               )}
@@ -221,7 +221,7 @@ export function BreadcrumbBar({ taskDetailLayout = false, showPropertiesToggle =
               <span className="truncate">{breadcrumbs[0].label}</span>
             </h1>
           ) : (
-            <h1 className="text-sm font-semibold uppercase tracking-wider truncate">
+            <h1 className="font-heading text-lg font-semibold tracking-tight truncate">
               {breadcrumbs[0].label}
             </h1>
           )}

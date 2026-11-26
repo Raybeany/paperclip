@@ -28,3 +28,11 @@ The bundled WOFF2 files are included unmodified from the upstream v4.1 release.
 The refreshed task-row specimen uses this variable webfont for task identifiers.
 It supports upright weights 100–800. Existing uses of the system monospace stack
 remain unchanged until their design is reviewed.
+
+## Space Grotesk
+
+- Upstream project: https://github.com/floriankarsten/space-grotesk
+- Source file: the Latin variable subset served by Google Fonts, https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2
+- License: SIL Open Font License 1.1, bundled as `SpaceGrotesk-OFL.txt`
+
+Redistribution note: Space Grotesk is redistributed unmodified under the SIL Open Font License 1.1. Raybeanys uses it for headings.

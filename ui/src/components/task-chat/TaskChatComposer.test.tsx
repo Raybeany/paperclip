@@ -1335,7 +1335,7 @@ describe("TaskChatComposer", () => {
     }
   });
 
-  it("uses the borderless Paper controls and inverse circular send button", () => {
+  it("uses the borderless Paper controls and brand-colored circular send button", () => {
     renderComposer({
       onAdd: vi.fn(),
       workMode: "standard",
@@ -1359,8 +1359,8 @@ describe("TaskChatComposer", () => {
     expect(assignee.classList).toContain("border-0");
     expect(assignee.classList).toContain("shadow-none");
     expect(send.classList).toContain("rounded-full");
-    expect(send.classList).toContain("bg-foreground");
-    expect(send.classList).toContain("text-background");
+    expect(send.classList).toContain("bg-primary");
+    expect(send.classList).toContain("text-primary-foreground");
     expect(send.classList).toContain("disabled:opacity-100");
   });
 

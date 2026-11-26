@@ -31,6 +31,7 @@ import { cn, formatCents } from "../lib/utils";
 import { SHOW_TASK_PRIORITY_UI } from "../lib/ui-flags";
 import { Bot, CircleDot, DollarSign, ShieldCheck, LayoutDashboard, PauseCircle } from "lucide-react";
 import { ActiveAgentsPanel } from "../components/ActiveAgentsPanel";
+import { DashboardWelcome } from "../components/DashboardWelcome";
 import { ChartCard, RunActivityChart, PriorityChart, IssueStatusChart, SuccessRateChart } from "../components/ActivityCharts";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { QueryErrorState, useQueryView } from "../components/QueryView";
@@ -76,7 +77,7 @@ export function derivePausedAgentBanner(agents: Agent[] | undefined): PausedAgen
 export function Dashboard() {
   const designSandbox = useDesignSandbox();
   const { selectedCompanyId, companies } = useCompany();
-  const { openOnboarding } = useDialogActions();
+  const { openOnboarding, openNewIssue } = useDialogActions();
   const location = useLocation();
   const { setBreadcrumbs } = useBreadcrumbs();
   const [animatedActivityIds, setAnimatedActivityIds] = useState<Set<string>>(new Set());
@@ -394,6 +395,11 @@ export function Dashboard() {
         </div>
       )}
 
+      {data && agents ? (
+        <DashboardWelcome agents={agents} issues={issues ?? []} approvals={data.pendingApprovals + data.budgets.pendingApprovals}
+          blocked={data.tasks.blocked} onNewTask={() => openNewIssue()} />
+      ) : null}
+
       <ActiveAgentsPanel companyId={selectedCompanyId!} dedupeLinkedTasks />
 
       {data && (
@@ -417,9 +423,9 @@ export function Dashboard() {
             </div>
           ) : null}
 
-          <div className={cn("grid grid-cols-2 xl:grid-cols-4", designSandbox ? "gap-4" : "gap-1 sm:gap-2")}>
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 sm:gap-4">
             <MetricCard
-              appearance={designSandbox ? "card" : "plain"}
+              appearance="card"
               icon={Bot}
               value={data.agents.active + data.agents.running + data.agents.paused + data.agents.error}
               label="Agents Enabled"
@@ -433,7 +439,7 @@ export function Dashboard() {
               }
             />
             <MetricCard
-              appearance={designSandbox ? "card" : "plain"}
+              appearance="card"
               icon={CircleDot}
               value={data.tasks.inProgress}
               label="Tasks In Progress"
@@ -446,7 +452,7 @@ export function Dashboard() {
               }
             />
             <MetricCard
-              appearance={designSandbox ? "card" : "plain"}
+              appearance="card"
               icon={DollarSign}
               value={formatCents(data.costs.monthSpendCents)}
               label="Month Spend"
@@ -460,7 +466,7 @@ export function Dashboard() {
               }
             />
             <MetricCard
-              appearance={designSandbox ? "card" : "plain"}
+              appearance="card"
               icon={ShieldCheck}
               value={data.pendingApprovals + data.budgets.pendingApprovals}
               label="Pending Approvals"
